@@ -1,0 +1,318 @@
+{% extends "inventory/base.html" %}
+
+{% block title %}Query {{ query.query_no }} — Inventory IMS{% endblock %}
+
+{% block content %}
+{# ===== WEB UI (hidden in print) ===== #}
+<div class="no-print">
+<div class="page-header d-flex justify-content-between align-items-center mb-0">
+    <div>
+        <h1><i class="bi bi-file-earmark-check me-2" style="color: var(--accent-mauve);"></i>{{ query.query_no }}</h1>
+        <p class="text-secondary">Consolidated Requirements for <strong>{{ query.financial_year }}</strong> (Snapshot: {{ query.created_at|date:"d-m-Y H:i" }})</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'inventory:export_ultimate_query_xls' query.pk %}" class="btn btn-outline-success" download>
+            <i class="bi bi-file-earmark-excel me-1"></i> Export Excel (.xls)
+        </a>
+        <button class="btn btn-outline-accent" id="printBtn" onclick="printActive()">
+            <i class="bi bi-printer me-1"></i> Print Report
+        </button>
+        <a href="{% url 'inventory:ultimate_query_list' %}" class="btn btn-outline-secondary">Back to List</a>
+    </div>
+</div>
+
+<ul class="nav nav-pills mb-4 px-3" id="pills-tab" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active me-2" id="pills-matrix-tab" data-bs-toggle="pill" data-bs-target="#pills-matrix" type="button" role="tab">
+            <i class="bi bi-grid-3x3-gap me-1"></i> Distribution Matrix
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="pills-summary-tab" data-bs-toggle="pill" data-bs-target="#pills-summary" type="button" role="tab">
+            <i class="bi bi-list-check me-1"></i> Consolidated List
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="pills-tabContent">
+    <!-- Distribution Matrix Tab -->
+    <div class="tab-pane fade show active" id="pills-matrix" role="tabpanel">
+        <div class="glass-card mb-4 overflow-hidden">
+            <h5 class="mb-3 px-1"><i class="bi bi-table me-2"></i>Instructor-wise Demand Matrix</h5>
+            <div class="table-responsive">
+                <table class="table table-bordered table-dark-custom mb-0" style="background: rgba(15, 23, 42, 0.4); font-size: 0.85rem;">
+                    <thead>
+                        <tr style="background: rgba(99, 102, 241, 0.1);">
+                            <th class="sticky-col" style="min-width: 250px;">Item Name</th>
+                            <th class="text-center" style="background: rgba(16, 185, 129, 0.1);">Total Qty</th>
+                            {% for inst in instructors %}
+                            <th class="text-center" style="min-width: 120px;">
+                                {{ inst.name }}<br>
+                                <small class="text-secondary" style="font-weight: 400; font-size: 0.7rem;">{{ inst.trade.trade_name }}</small>
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in matrix_rows %}
+                        <tr>
+                            <td class="sticky-col">
+                                <strong>{{ row.item.item_name }}</strong><br>
+                                <code style="font-size: 0.7rem; color: var(--accent-mauve);">{{ row.item.item_code }}</code>
+                            </td>
+                            <td class="text-center fw-bold text-success">{{ row.total_qty }}</td>
+                            {% for qty in row.instructor_cols %}
+                            <td class="text-center {% if qty == 0 %}text-secondary opacity-25{% else %}fw-semibold text-accent{% endif %}">
+                                {% if qty > 0 %}{{ qty }}{% else %}-{% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Tab -->
+    <div class="tab-pane fade" id="pills-summary" role="tabpanel">
+        <div class="glass-card mb-4">
+            <h5 class="mb-3">Consolidated Requirement List</h5>
+            <div class="table-responsive">
+                <table class="table table-modern mb-0">
+                    <thead>
+                        <tr>
+                            <th>Item ID</th>
+                            <th>Item Name</th>
+                            <th>Category</th>
+                            <th>Total Qty</th>
+                            <th class="text-end">Est. Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for li in items %}
+                        <tr>
+                            <td><code>{{ li.item.item_code }}</code></td>
+                            <td>{{ li.item.item_name }}</td>
+                            <td><span class="badge bg-opacity-10 bg-accent text-accent px-2">{{ li.item.group.name }}</span></td>
+                            <td><strong>{{ li.total_quantity }}</strong> <small>{{ li.item.item_unit }}</small></td>
+                            <td class="text-end text-accent fw-bold">₹{{ li.total_estimated_cost|floatformat:2 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="fw-bold">
+                            <td colspan="4" class="text-end">Grand Total:</td>
+                            <td class="text-end text-success" style="font-size: 1.1rem;">₹{{ total_cost|floatformat:2 }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="glass-card mt-4">
+    <h6 class="mb-3 text-secondary text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.1em;">Sources</h6>
+    <div class="d-flex flex-wrap gap-2">
+        {% for dn in query.demand_notes.all %}
+        <a href="{% url 'inventory:store_view_demand' dn.pk %}" class="badge bg-dark bg-opacity-50 text-secondary border border-secondary border-opacity-25 text-decoration-none px-3 py-2">
+            <i class="bi bi-file-text me-1"></i> {{ dn }}
+        </a>
+        {% endfor %}
+    </div>
+</div>
+</div>{# end .no-print #}
+
+
+{# ===== PRINT-ONLY: DISTRIBUTION MATRIX (shown when matrix tab is active) ===== #}
+<div class="print-matrix-section" style="display:none;">
+    {# --- Header --- #}
+    <div style="text-align:center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px;">
+        <div style="font-size: 14pt; font-weight: 800; text-transform: uppercase;">Government Industrial Training Institute</div>
+        <div style="font-size: 10pt; font-weight: 600; text-transform: uppercase; margin-top: 2px;">Instructor-wise Requirement Distribution Matrix</div>
+        <div style="font-size: 8pt; margin-top: 4px;">
+            Batch: <strong>{{ query.query_no }}</strong> &nbsp;|&nbsp;
+            Year: <strong>{{ query.financial_year }}</strong> &nbsp;|&nbsp;
+            Date: <strong>{{ query.created_at|date:"d-m-Y" }}</strong>
+        </div>
+    </div>
+
+    <table style="width:100%; border-collapse:collapse; font-size:8pt; margin-bottom: 16px;">
+        <thead>
+            <tr style="background: #e8e8e8;">
+                <th style="border:1px solid #000; padding:4px 6px; text-align:left;">Item Description</th>
+                <th style="border:1px solid #000; padding:4px 6px; text-align:center; width:60px;">Code</th>
+                <th style="border:1px solid #000; padding:4px 6px; text-align:center; width:40px;">Unit</th>
+                <th style="border:1px solid #000; padding:4px 6px; text-align:center; width:50px;">Total</th>
+                {% for inst in instructors %}
+                <th style="border:1px solid #000; padding:4px 6px; text-align:center; font-size:7pt;">
+                    {{ inst.name }}<br><span style="font-weight:400;">{{ inst.trade.trade_name }}</span>
+                </th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in matrix_rows %}
+            <tr>
+                <td style="border:1px solid #000; padding:4px 6px; font-weight:600;">{{ row.item.item_name }}</td>
+                <td style="border:1px solid #000; padding:4px 6px; text-align:center; font-size:7pt;">{{ row.item.item_code }}</td>
+                <td style="border:1px solid #000; padding:4px 6px; text-align:center;">{{ row.item.item_unit }}</td>
+                <td style="border:1px solid #000; padding:4px 6px; text-align:center; font-weight:700;">{{ row.total_qty }}</td>
+                {% for qty in row.instructor_cols %}
+                <td style="border:1px solid #000; padding:4px 6px; text-align:center;">{% if qty > 0 %}{{ qty }}{% else %}&mdash;{% endif %}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {# Signatures #}
+    <p style="font-size:7.5pt; font-style:italic; margin-bottom:20px;">Demand distribution verified and submitted for procurement approval.</p>
+    <div style="display:flex; justify-content:space-between; margin-top:50px;">
+        <div style="text-align:center; width:200px;">
+            <div style="border-top:1.5px solid #000; padding-top:8px; font-weight:700; font-size:8pt; text-transform:uppercase;">Store Keeper / In-Charge</div>
+            <div style="font-size:7pt;">(Signature &amp; Date)</div>
+        </div>
+        <div style="text-align:center; width:200px;">
+            <div style="border-top:1.5px solid #000; padding-top:8px; font-weight:700; font-size:8pt; text-transform:uppercase;">Head of Section</div>
+            <div style="font-size:7pt;">(Signature &amp; Date)</div>
+        </div>
+        <div style="text-align:center; width:200px;">
+            <div style="border-top:1.5px solid #000; padding-top:8px; font-weight:700; font-size:8pt; text-transform:uppercase;">Principal / Appointing Auth.</div>
+            <div style="font-size:7pt;">(Signature &amp; Date)</div>
+        </div>
+    </div>
+</div>
+
+
+{# ===== PRINT-ONLY: CONSOLIDATED LIST (shown when consolidated tab is active) ===== #}
+<div class="print-consolidated-section" style="display:none;">
+    {# --- Header --- #}
+    <div style="text-align:center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px;">
+        <div style="font-size: 14pt; font-weight: 800; text-transform: uppercase;">Government Industrial Training Institute</div>
+        <div style="font-size: 10pt; font-weight: 600; text-transform: uppercase; margin-top: 2px;">Consolidated Requirement List</div>
+        <div style="font-size: 8pt; margin-top: 4px;">
+            Batch: <strong>{{ query.query_no }}</strong> &nbsp;|&nbsp;
+            Year: <strong>{{ query.financial_year }}</strong> &nbsp;|&nbsp;
+            Date: <strong>{{ query.created_at|date:"d-m-Y" }}</strong>
+        </div>
+    </div>
+
+    <table style="width:100%; border-collapse:collapse; font-size:8pt; margin-bottom: 16px;">
+        <thead>
+            <tr style="background: #e8e8e8;">
+                <th style="border:1px solid #000; padding:4px 6px; text-align:center; width:30px;">Sr.</th>
+                <th style="border:1px solid #000; padding:4px 6px; text-align:left; width:80px;">Item Code</th>
+                <th style="border:1px solid #000; padding:4px 6px; text-align:left;">Item Name</th>
+                <th style="border:1px solid #000; padding:4px 6px; text-align:left; width:100px;">Category</th>
+                <th style="border:1px solid #000; padding:4px 6px; text-align:center; width:50px;">Qty</th>
+                <th style="border:1px solid #000; padding:4px 6px; text-align:center; width:40px;">Unit</th>
+                <th style="border:1px solid #000; padding:4px 6px; text-align:right; width:90px;">Est. Cost (₹)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for li in items %}
+            <tr>
+                <td style="border:1px solid #000; padding:4px 6px; text-align:center;">{{ forloop.counter }}</td>
+                <td style="border:1px solid #000; padding:4px 6px; font-size:7pt;">{{ li.item.item_code }}</td>
+                <td style="border:1px solid #000; padding:4px 6px; font-weight:600;">{{ li.item.item_name }}</td>
+                <td style="border:1px solid #000; padding:4px 6px;">{{ li.item.group.name }}</td>
+                <td style="border:1px solid #000; padding:4px 6px; text-align:center; font-weight:700;">{{ li.total_quantity }}</td>
+                <td style="border:1px solid #000; padding:4px 6px; text-align:center;">{{ li.item.item_unit }}</td>
+                <td style="border:1px solid #000; padding:4px 6px; text-align:right;">{{ li.total_estimated_cost|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr style="background:#f0f0f0;">
+                <td colspan="6" style="border:1px solid #000; padding:4px 6px; text-align:right; font-weight:700;">Grand Total:</td>
+                <td style="border:1px solid #000; padding:4px 6px; text-align:right; font-weight:700;">{{ total_cost|floatformat:2 }}</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    {# Signatures #}
+    <p style="font-size:7.5pt; font-style:italic; margin-bottom:20px;">The above consolidated requirements are submitted for review and procurement approval.</p>
+    <div style="display:flex; justify-content:space-between; margin-top:50px;">
+        <div style="text-align:center; width:200px;">
+            <div style="border-top:1.5px solid #000; padding-top:8px; font-weight:700; font-size:8pt; text-transform:uppercase;">Store Keeper / In-Charge</div>
+            <div style="font-size:7pt;">(Signature &amp; Date)</div>
+        </div>
+        <div style="text-align:center; width:200px;">
+            <div style="border-top:1.5px solid #000; padding-top:8px; font-weight:700; font-size:8pt; text-transform:uppercase;">Head of Section</div>
+            <div style="font-size:7pt;">(Signature &amp; Date)</div>
+        </div>
+        <div style="text-align:center; width:200px;">
+            <div style="border-top:1.5px solid #000; padding-top:8px; font-weight:700; font-size:8pt; text-transform:uppercase;">Principal / Appointing Auth.</div>
+            <div style="font-size:7pt;">(Signature &amp; Date)</div>
+        </div>
+    </div>
+</div>
+
+
+<style>
+    /* ===== WEB-ONLY STYLES ===== */
+    .table-dark-custom { border-collapse: separate; border-spacing: 0; }
+    .sticky-col {
+        position: sticky;
+        left: 0;
+        background: rgb(26, 33, 49) !important;
+        z-index: 2;
+        border-right: 2px solid rgba(255,255,255,0.05) !important;
+    }
+    .table-dark-custom thead th {
+        background: rgba(30, 41, 59, 0.9) !important;
+        border-color: rgba(255,255,255,0.05);
+    }
+    .table-dark-custom td {
+        border-color: rgba(255,255,255,0.05);
+    }
+
+    /* ===== PRINT STYLES ===== */
+    @media print {
+        @page {
+            size: landscape;
+            margin: 0.7cm 0.8cm;
+        }
+
+        /* Hide ALL screen UI */
+        .no-print { display: none !important; }
+
+        /* By default hide both print sections */
+        .print-matrix-section,
+        .print-consolidated-section { display: none !important; }
+
+        /* Show only the relevant section based on body attribute */
+        body[data-print="matrix"] .print-matrix-section { display: block !important; }
+        body[data-print="consolidated"] .print-consolidated-section { display: block !important; }
+
+        body {
+            background: #fff !important;
+            color: #000 !important;
+            font-family: 'Inter', Arial, sans-serif !important;
+            font-size: 8pt !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .main-content { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+
+        * { background: transparent; color: #000 !important; box-shadow: none !important; border-radius: 0 !important; }
+
+        a { text-decoration: none !important; color: #000 !important; }
+    }
+</style>
+
+<script>
+function printActive() {
+    // Detect which tab is currently active
+    const matrixTabBtn = document.getElementById('pills-matrix-tab');
+    const isMatrix = matrixTabBtn && matrixTabBtn.classList.contains('active');
+    document.body.setAttribute('data-print', isMatrix ? 'matrix' : 'consolidated');
+    window.print();
+    // Clean up after print dialog closes
+    setTimeout(() => document.body.removeAttribute('data-print'), 1000);
+}
+</script>
+{% endblock %}

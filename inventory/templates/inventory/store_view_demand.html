@@ -1,0 +1,137 @@
+{% extends "inventory/base.html" %}
+
+{% block title %}DN-{{ demand.pk|stringformat:"04d" }} — Store View{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>
+        <i class="bi bi-file-earmark-text me-2" style="color: var(--accent);"></i>
+        Demand Note DN-{{ demand.pk|stringformat:"04d" }}
+    </h1>
+    <p>
+        From <strong style="color: var(--accent);">{{ demand.instructor.name }}</strong>
+        ({{ demand.trade.trade_name }})
+    </p>
+</div>
+
+<!-- Summary Row -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="glass-card stat-card blue">
+            <div class="stat-label">Semester</div>
+            <div class="stat-number" style="color: var(--accent);">{{ demand.semester_no }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="glass-card stat-card peach">
+            <div class="stat-label">Financial Year</div>
+            <div style="font-weight: 600; font-size: 1.1rem; color: var(--accent-peach);">{{ demand.financial_year }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="glass-card stat-card green">
+            <div class="stat-label">Total Items</div>
+            <div class="stat-number" style="color: var(--accent-green);">{{ demand.total_items }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="glass-card stat-card mauve">
+            <div class="stat-label">Estimated Cost</div>
+            <div style="font-weight: 700; font-size: 1.1rem; color: var(--accent-mauve);">₹{{ demand.total_estimated_cost|floatformat:2 }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Items Table -->
+    <div class="col-lg-8 mb-4">
+        <div class="glass-card">
+            <h5 class="mb-3"><i class="bi bi-list-ol me-2"></i>Items</h5>
+            <div class="table-responsive">
+                <table class="table table-modern mb-0">
+                    <thead>
+                        <tr>
+                            <th>Sr.</th>
+                            <th>Item Code</th>
+                            <th>Item Name</th>
+                            <th>Unit</th>
+                            <th>Qty</th>
+                            <th>Est. Price</th>
+                            <th>Est. Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for di in items %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td><code>{{ di.item.item_code }}</code></td>
+                            <td>{{ di.item.item_name }}</td>
+                            <td>{{ di.item.item_unit }}</td>
+                            <td><strong>{{ di.quantity_required }}</strong></td>
+                            <td>₹{{ di.item.est_price|floatformat:2 }}</td>
+                            <td><strong style="color: var(--accent-green);">₹{{ di.estimated_cost|floatformat:2 }}</strong></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="6" class="text-end"><strong>Grand Total</strong></td>
+                            <td><strong style="color: var(--accent-green); font-size: 1.05rem;">₹{{ demand.total_estimated_cost|floatformat:2 }}</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        {% if demand.remarks %}
+        <div class="glass-card mt-3" style="border-left: 3px solid var(--accent-mauve);">
+            <h6><i class="bi bi-chat-left-text me-1"></i> Instructor Remarks</h6>
+            <p class="mb-0" style="font-size: 0.9rem; color: var(--text-secondary);">{{ demand.remarks }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Status Update Panel -->
+    <div class="col-lg-4 mb-4">
+        <div class="glass-card" style="border-left: 3px solid var(--accent);">
+            <h5 class="mb-3"><i class="bi bi-gear me-2"></i>Update Status</h5>
+            <form method="post">
+                {% csrf_token %}
+                {% for field in form %}
+                <div class="mb-3">
+                    <label class="form-label">{{ field.label }}</label>
+                    {{ field }}
+                </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-gradient w-100">
+                    <i class="bi bi-check2-circle me-1"></i> Save Changes
+                </button>
+            </form>
+        </div>
+
+        <div class="glass-card mt-3">
+            <h6 class="mb-2"><i class="bi bi-clock-history me-1"></i> Timeline</h6>
+            <ul style="font-size: 0.82rem; color: var(--text-secondary); list-style: none; padding: 0;">
+                <li class="mb-2">
+                    <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem; color: var(--accent-peach);"></i>
+                    Created: {{ demand.created_at|date:"d M Y, H:i" }}
+                </li>
+                {% if demand.submitted_at %}
+                <li class="mb-2">
+                    <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem; color: var(--accent);"></i>
+                    Submitted: {{ demand.submitted_at|date:"d M Y, H:i" }}
+                </li>
+                {% endif %}
+                <li>
+                    <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem; color: var(--accent-green);"></i>
+                    Last Updated: {{ demand.updated_at|date:"d M Y, H:i" }}
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<a href="{% url 'inventory:all_demands' %}" class="btn btn-outline-accent">
+    <i class="bi bi-arrow-left me-1"></i> Back to All Demands
+</a>
+{% endblock %}

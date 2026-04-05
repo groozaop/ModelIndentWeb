@@ -1,0 +1,55 @@
+{% extends "inventory/base.html" %}
+
+{% block title %}Create Indent — Inventory IMS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-plus-circle me-2" style="color: var(--accent);"></i>Create New Indent</h1>
+    <p>Raise a demand for items required for your trade</p>
+</div>
+
+<div class="row">
+    <div class="col-lg-7">
+        <div class="glass-card">
+            <form method="post" id="indent-form">
+                {% csrf_token %}
+                {% for field in form %}
+                <div class="mb-3">
+                    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                    <div class="text-danger mt-1" style="font-size: 0.8rem;">
+                        {% for error in field.errors %}{{ error }}{% endfor %}
+                    </div>
+                    {% endif %}
+                    {% if field.help_text %}
+                    <small class="text-muted">{{ field.help_text }}</small>
+                    {% endif %}
+                </div>
+                {% endfor %}
+
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-gradient">
+                        <i class="bi bi-check2-circle me-1"></i> Submit Indent
+                    </button>
+                    <a href="{% url 'inventory:my_indents' %}" class="btn btn-outline-accent">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="col-lg-5 mt-4 mt-lg-0">
+        <div class="glass-card" style="border-left: 3px solid var(--accent);">
+            <h6 class="mb-3"><i class="bi bi-info-circle me-1"></i> Guidelines</h6>
+            <ul style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.8;">
+                <li>Select the item you need from the dropdown</li>
+                <li>Enter the <strong>exact quantity</strong> required for the semester</li>
+                <li>Choose the correct <strong>semester number</strong></li>
+                <li>Select the appropriate <strong>financial year</strong></li>
+                <li>Your indent will be submitted as <span class="badge-status badge-pending">PENDING</span></li>
+                <li>The Store department will review and merge demands</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

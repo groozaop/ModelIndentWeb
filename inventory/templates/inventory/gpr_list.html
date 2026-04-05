@@ -1,0 +1,185 @@
+{% extends "inventory/base.html" %}
+
+{% block title %}GPR Register — Inventory IMS{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1><i class="bi bi-journal-text me-2" style="color: var(--accent-green);"></i>Goods Purchase Register (GPR)</h1>
+        <p class="text-secondary">Inward stock tracking — Purchased / Allocated / Outstanding</p>
+    </div>
+    <a href="{% url 'inventory:add_gpr' %}" class="btn btn-gradient">
+        <i class="bi bi-cart-plus me-1"></i> New Entry
+    </a>
+</div>
+
+{# Summary Bar #}
+{% if enriched %}
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="glass-card text-center py-3">
+            <div class="text-secondary" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em;">Total Entries</div>
+            <div style="font-size:2rem; font-weight:700; color: var(--accent-green);">{{ total_count }}</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="glass-card text-center py-3">
+            <div class="text-secondary" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em;">Pending Allocation</div>
+            <div style="font-size:2rem; font-weight:700; color: var(--accent-yellow, #f59e0b);">
+                {{ pending_count }}
+            </div>
+            <div style="font-size:0.75rem; color: var(--text-secondary);">Items with outstanding qty</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="glass-card text-center py-3">
+            <div class="text-secondary" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em;">Fully Allocated</div>
+            <div style="font-size:2rem; font-weight:700; color: var(--accent-teal, #14b8a6);">
+                {{ fully_allocated_count }}
+            </div>
+            <div style="font-size:0.75rem; color: var(--text-secondary);">All items distributed</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{# Filter #}
+<div class="glass-card mb-4">
+    <form method="get" class="row g-3">
+        <div class="col-md-4">
+            <select name="financial_year" class="form-select">
+                <option value="">All Financial Years</option>
+                {% for fy in financial_years %}
+                <option value="{{ fy.0 }}" {% if selected_fy == fy.0 %}selected{% endif %}>{{ fy.1 }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-outline-accent w-100">Filter</button>
+        </div>
+        {% if selected_fy %}
+        <div class="col-md-2">
+            <a href="{% url 'inventory:gpr_list' %}" class="btn btn-outline-secondary w-100">Clear</a>
+        </div>
+        {% endif %}
+    </form>
+</div>
+
+{# Main Table #}
+<div class="glass-card">
+    <div class="table-responsive">
+        <table class="table table-modern mb-0">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Ref (CR)</th>
+                    <th>Item Name</th>
+                    <th>Supplier / Bill</th>
+                    <th>GPR No</th>
+                    <th class="text-center" style="background: rgba(16,185,129,0.07);">
+                        <i class="bi bi-box-seam me-1"></i> Purchased
+                    </th>
+                    <th class="text-center" style="background: rgba(99,102,241,0.07);">
+                        <i class="bi bi-people me-1"></i> Allocated
+                    </th>
+                    <th class="text-center" style="background: rgba(245,158,11,0.1);">
+                        <i class="bi bi-exclamation-triangle me-1"></i> Outstanding
+                    </th>
+                    <th class="text-center">Status</th>
+                    <th class="text-end">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in enriched %}
+                <tr class="{% if row.is_fully_allocated %}opacity-75{% endif %}">
+                    <td style="white-space:nowrap;">{{ row.gpr.inward_date|date:"d-m-Y" }}</td>
+                    <td><code>{{ row.gpr.gpr_reference }}</code></td>
+                    <td>
+                        <strong>{{ row.gpr.item.item_name }}</strong><br>
+                        <small class="text-secondary">{{ row.gpr.item.item_code }}</small>
+                    </td>
+                    <td>
+                        {{ row.gpr.supplier_name }}<br>
+                        <small class="text-secondary">{{ row.gpr.bill_no }}</small>
+                    </td>
+                    <td>
+                        <span class="badge bg-opacity-10 bg-accent text-accent font-monospace">{{ row.gpr.gpr_no }}</span>
+                    </td>
+
+                    {# Purchased Qty #}
+                    <td class="text-center">
+                        <strong style="color: var(--accent-green);">{{ row.gpr.item_qty }}</strong>
+                        <small class="text-secondary d-block">{{ row.gpr.item.item_unit }}</small>
+                    </td>
+
+                    {# Allocated Qty #}
+                    <td class="text-center">
+                        {% if row.allocated_qty > 0 %}
+                        <strong style="color: var(--accent-mauve);">{{ row.allocated_qty }}</strong>
+                        {% else %}
+                        <span class="text-secondary">—</span>
+                        {% endif %}
+                        <small class="text-secondary d-block">{{ row.gpr.item.item_unit }}</small>
+                    </td>
+
+                    {# Outstanding Qty - key column #}
+                    <td class="text-center">
+                        {% if row.is_fully_allocated %}
+                            <span class="text-secondary">0</span>
+                        {% elif row.outstanding_qty > 0 %}
+                            <strong style="color: #f59e0b; font-size: 1.05rem;">{{ row.outstanding_qty }}</strong>
+                            <small class="text-secondary d-block">{{ row.gpr.item.item_unit }}</small>
+                        {% else %}
+                            <span class="text-secondary">—</span>
+                        {% endif %}
+                    </td>
+
+                    {# Status Badge #}
+                    <td class="text-center">
+                        {% if row.is_fully_allocated %}
+                        <span class="badge" style="background: rgba(16,185,129,0.15); color: var(--accent-green); border: 1px solid rgba(16,185,129,0.3);">
+                            <i class="bi bi-check-circle-fill me-1"></i> Fully Allocated
+                        </span>
+                        {% elif row.allocated_qty == 0 %}
+                        <span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3);">
+                            <i class="bi bi-exclamation-circle-fill me-1"></i> Not Allocated
+                        </span>
+                        {% else %}
+                        <span class="badge" style="background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3);">
+                            <i class="bi bi-hourglass-split me-1"></i> Partial
+                        </span>
+                        {% endif %}
+                    </td>
+
+                    <td class="text-end">
+                        {% if not row.is_fully_allocated %}
+                        <a href="{% url 'inventory:allocate_cr' row.gpr.pk %}" class="btn btn-sm btn-outline-accent">
+                            <i class="bi bi-person-plus"></i> Allocate
+                        </a>
+                        {% else %}
+                        <a href="{% url 'inventory:allocate_cr' row.gpr.pk %}" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-eye"></i> View
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="10" class="text-center py-5" style="color: var(--text-secondary);">
+                        <i class="bi bi-inbox display-4 d-block mb-2 opacity-25"></i>
+                        No GPR records found for this criteria.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{# Legend #}
+<div class="d-flex gap-4 mt-3 ms-1" style="font-size: 0.8rem; color: var(--text-secondary);">
+    <span><span style="color: var(--accent-green);">●</span> Purchased — total qty received from supplier</span>
+    <span><span style="color: var(--accent-mauve);">●</span> Allocated — qty distributed to instructors via CR</span>
+    <span><span style="color: #f59e0b;">●</span> Outstanding — qty pending allocation</span>
+</div>
+{% endblock %}

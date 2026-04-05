@@ -1,0 +1,85 @@
+{% extends "inventory/base.html" %}
+
+{% block title %}Edit Indent #{{ indent.id }} — Inventory IMS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-pencil-square me-2" style="color: var(--accent-peach);"></i>Edit Indent #{{ indent.id }}</h1>
+    <p>
+        Raised by <strong style="color: var(--accent);">{{ indent.instructor.name }}</strong>
+        ({{ indent.trade.trade_name }}) on {{ indent.created_at|date:"d M Y, H:i" }}
+    </p>
+</div>
+
+<div class="row">
+    <div class="col-lg-7">
+        <div class="glass-card">
+            <form method="post" id="edit-indent-form">
+                {% csrf_token %}
+                {% for field in form %}
+                <div class="mb-3">
+                    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                    <div class="text-danger mt-1" style="font-size: 0.8rem;">
+                        {% for error in field.errors %}{{ error }}{% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-gradient">
+                        <i class="bi bi-check2-circle me-1"></i> Save Changes
+                    </button>
+                    <a href="{% url 'inventory:all_indents' %}" class="btn btn-outline-accent">
+                        <i class="bi bi-arrow-left me-1"></i> Back to All Indents
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="col-lg-5 mt-4 mt-lg-0">
+        <div class="glass-card" style="border-left: 3px solid var(--accent-peach);">
+            <h6 class="mb-3"><i class="bi bi-info-circle me-1"></i> Indent Details</h6>
+            <table class="table table-sm mb-0" style="font-size: 0.85rem;">
+                <tr>
+                    <td style="color: var(--text-secondary); border: none; padding: 0.4rem 0;">Indent ID</td>
+                    <td style="border: none; padding: 0.4rem 0;"><strong>#{{ indent.id }}</strong></td>
+                </tr>
+                <tr>
+                    <td style="color: var(--text-secondary); border: none; padding: 0.4rem 0;">Instructor</td>
+                    <td style="border: none; padding: 0.4rem 0;">{{ indent.instructor.name }}</td>
+                </tr>
+                <tr>
+                    <td style="color: var(--text-secondary); border: none; padding: 0.4rem 0;">Trade</td>
+                    <td style="border: none; padding: 0.4rem 0;">{{ indent.trade.trade_name }}</td>
+                </tr>
+                <tr>
+                    <td style="color: var(--text-secondary); border: none; padding: 0.4rem 0;">Current Status</td>
+                    <td style="border: none; padding: 0.4rem 0;">
+                        <span class="badge-status badge-{{ indent.status|lower }}">
+                            {{ indent.get_status_display }}
+                        </span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="color: var(--text-secondary); border: none; padding: 0.4rem 0;">Created</td>
+                    <td style="border: none; padding: 0.4rem 0;">{{ indent.created_at|date:"d M Y, H:i" }}</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="glass-card mt-3" style="border-left: 3px solid var(--accent-mauve);">
+            <h6 class="mb-2"><i class="bi bi-lightbulb me-1"></i> Tips</h6>
+            <ul style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.9; padding-left: 1rem;">
+                <li>You can <strong>change the quantity</strong> before merging</li>
+                <li>Set status to <span class="badge-status badge-merged">MERGED</span> after consolidating</li>
+                <li>Set status to <span class="badge-status badge-purchased">PURCHASED</span> after GPR entry</li>
+                <li>Set status to <span class="badge-status badge-issued">ISSUED</span> after CR allocation</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

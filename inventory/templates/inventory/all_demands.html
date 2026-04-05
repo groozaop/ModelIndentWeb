@@ -1,0 +1,148 @@
+{% extends "inventory/base.html" %}
+
+{% block title %}All Demands — Inventory IMS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-clipboard-data me-2" style="color: var(--accent);"></i>All Submitted Demands</h1>
+    <p>Demands received from instructors (only submitted and beyond)</p>
+</div>
+
+<!-- Filters -->
+<div class="glass-card mb-4">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label">Financial Year</label>
+            <select name="financial_year" class="form-select">
+                <option value="">All Years</option>
+                {% for val, label in financial_years %}
+                <option value="{{ val }}" {% if selected_fy == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Status</label>
+            <select name="status" class="form-select">
+                <option value="">All Statuses</option>
+                {% for val, label in status_choices %}
+                <option value="{{ val }}" {% if selected_status == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Trade</label>
+            <select name="trade" class="form-select">
+                <option value="">All Trades</option>
+                {% for trade in trades %}
+                <option value="{{ trade.id }}" {% if selected_trade == trade.id|slugify %}selected{% endif %}>{{ trade.trade_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-outline-accent w-100">
+                <i class="bi bi-funnel me-1"></i> Filter
+            </button>
+        </div>
+    </form>
+</div>
+
+<form method="post" action="{% url 'inventory:merge_demand' %}">
+    {% csrf_token %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <span style="font-size: 0.85rem; color: var(--text-secondary);">
+            <strong>{{ demands|length }}</strong> demand note(s)
+        </span>
+        <button type="submit" class="btn btn-gradient btn-sm" id="merge-btn" disabled>
+            <i class="bi bi-intersect me-1"></i> Merge Selected
+        </button>
+    </div>
+
+    <!-- Demands Table -->
+    <div class="glass-card">
+        <div class="table-responsive">
+            <table class="table table-modern mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;">
+                            <input type="checkbox" class="form-check-input" id="select-all">
+                        </th>
+                        <th>DN #</th>
+                        <th>Instructor</th>
+                        <th>Trade</th>
+                        <th>Sem</th>
+                        <th>FY</th>
+                        <th>Items</th>
+                        <th>Est. Cost</th>
+                        <th>Status</th>
+                        <th>Submitted</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for demand in demands %}
+                    <tr>
+                        <td>
+                            {% if demand.status == 'SUBMITTED' %}
+                            <input type="checkbox" name="demand_ids" value="{{ demand.id }}" class="form-check-input demand-checkbox">
+                            {% endif %}
+                        </td>
+                        <td><strong>DN-{{ demand.pk|stringformat:"04d" }}</strong></td>
+                        <td style="color: var(--accent);">{{ demand.instructor.name }}</td>
+                        <td>{{ demand.trade.trade_name }}</td>
+                        <td>{{ demand.semester_no }}</td>
+                        <td>{{ demand.financial_year }}</td>
+                        <td>{{ demand.total_items }}</td>
+                        <td><strong style="color: var(--accent-green);">₹{{ demand.total_estimated_cost|floatformat:2 }}</strong></td>
+                        <td>
+                            <span class="badge-status badge-{{ demand.status|lower }}">
+                                {{ demand.get_status_display }}
+                            </span>
+                        </td>
+                        <td>{{ demand.submitted_at|date:"d M Y" }}</td>
+                        <td>
+                            <a href="{% url 'inventory:store_view_demand' demand.pk %}"
+                               class="btn btn-sm btn-outline-accent" title="View / Edit">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="11" class="text-center py-4" style="color: var(--text-secondary);">
+                            <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                            <p class="mt-2 mb-0">No submitted demands found</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('select-all');
+    const checkboxes = document.querySelectorAll('.demand-checkbox');
+    const mergeBtn = document.getElementById('merge-btn');
+
+    function updateMergeButton() {
+        const checkedCount = document.querySelectorAll('.demand-checkbox:checked').length;
+        mergeBtn.disabled = checkedCount === 0;
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            checkboxes.forEach(cb => {
+                cb.checked = selectAll.checked;
+            });
+            updateMergeButton();
+        });
+    }
+
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', updateMergeButton);
+    });
+});
+</script>
+{% endblock %}

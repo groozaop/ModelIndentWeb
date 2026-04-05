@@ -1,0 +1,88 @@
+{% extends "inventory/base.html" %}
+
+{% block title %}Add GPR Entry — Inventory IMS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-cart-plus me-2" style="color: var(--accent-green);"></i>Add GPR Entry</h1>
+    <p>Record a new purchase in the Goods Purchase Register</p>
+</div>
+
+<div class="row">
+    <div class="col-lg-7">
+        <div class="glass-card">
+            <form method="post" id="gpr-form">
+                {% csrf_token %}
+                
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label">Inward Date</label>
+                        {{ form.inward_date }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Supplier Name</label>
+                        {{ form.supplier_name }}
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-8">
+                        <label class="form-label">Item</label>
+                        {{ form.item }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Quantity Received</label>
+                        {{ form.item_qty }}
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label">Bill Number</label>
+                        {{ form.bill_no }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">GPR NO</label>
+                        {{ form.gpr_no }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Financial Year</label>
+                        {{ form.financial_year }}
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">CR Register Index (Reg / Page / Idx / Sub)</label>
+                    <div class="row g-2">
+                        <div class="col-3">{{ form.register_no }}</div>
+                        <div class="col-3">{{ form.page_no }}</div>
+                        <div class="col-3">{{ form.item_no }}</div>
+                        <div class="col-3">{{ form.sub_entry }}</div>
+                    </div>
+                    {% if form.register_no.errors or form.page_no.errors or form.item_no.errors or form.sub_entry.errors %}
+                    <div class="text-danger mt-1" style="font-size: 0.8rem;">Please provide valid indexing.</div>
+                    {% endif %}
+                </div>
+
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-gradient">
+                        <i class="bi bi-check2-circle me-1"></i> Save & Allocate to CR
+                    </button>
+                    <a href="{% url 'inventory:gpr_list' %}" class="btn btn-outline-accent">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="col-lg-5 mt-4 mt-lg-0">
+        <div class="glass-card" style="border-left: 3px solid var(--accent-green);">
+            <h6 class="mb-3"><i class="bi bi-info-circle me-1"></i> Workflow</h6>
+            <ul class="list-unstyled mb-0" style="font-size: 0.85rem; color: var(--text-secondary); line-height: 2;">
+                <li><i class="bi bi-1-circle me-2 text-accent"></i>Record the <strong>GPR Reference</strong> (e.g., GPR-1/5/42/2)</li>
+                <li><i class="bi bi-2-circle me-2 text-accent"></i>Allocated items will move to <strong>CR Register</strong></li>
+                <li><i class="bi bi-3-circle me-2 text-accent"></i>All entries are mapped to physical ledgers</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

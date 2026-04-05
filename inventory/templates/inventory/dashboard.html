@@ -1,0 +1,84 @@
+{% extends "inventory/base.html" %}
+
+{% block title %}Dashboard — Inventory IMS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Dashboard</h1>
+    <p>Welcome back, <strong>{{ user.get_full_name|default:user.username }}</strong></p>
+</div>
+
+<!-- Stats Row -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3 col-sm-6">
+        <div class="glass-card stat-card blue">
+            <div class="stat-number" style="color: var(--accent);">{{ total_items }}</div>
+            <div class="stat-label">Total Items</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="glass-card stat-card peach">
+            <div class="stat-number" style="color: var(--accent-peach);">{{ pending_demands }}</div>
+            <div class="stat-label">Submitted Demands</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="glass-card stat-card green">
+            <div class="stat-number" style="color: var(--accent-green);">{{ total_gpr }}</div>
+            <div class="stat-label">GPR Entries</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="glass-card stat-card mauve">
+            <div class="stat-number" style="color: var(--accent-mauve);">{{ draft_count|default:"—" }}</div>
+            <div class="stat-label">My Drafts</div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Demands (for Instructors) -->
+{% if my_demands %}
+<div class="glass-card">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>My Recent Demands</h5>
+        <a href="{% url 'inventory:my_demands' %}" class="btn btn-sm btn-outline-accent">View All</a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-modern mb-0">
+            <thead>
+                <tr>
+                    <th>DN #</th>
+                    <th>FY</th>
+                    <th>Items</th>
+                    <th>Est. Cost</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for demand in my_demands %}
+                <tr>
+                    <td><strong>DN-{{ demand.pk|stringformat:"04d" }}</strong></td>
+                    <td>{{ demand.financial_year }}</td>
+                    <td>{{ demand.total_items }}</td>
+                    <td>₹{{ demand.total_estimated_cost|floatformat:2 }}</td>
+                    <td>
+                        <span class="badge-status badge-{{ demand.status|lower }}">
+                            {{ demand.get_status_display }}
+                        </span>
+                    </td>
+                    <td>{{ demand.created_at|date:"d M Y" }}</td>
+                    <td>
+                        <a href="{% url 'inventory:view_demand' demand.pk %}" class="btn btn-sm btn-outline-accent">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

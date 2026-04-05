@@ -1,0 +1,124 @@
+{% extends "inventory/base.html" %}
+
+{% block title %}Allocate to CR — Inventory IMS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-arrow-left-right me-2" style="color: var(--accent-mauve);"></i>Allocate to Consumable Register</h1>
+    <p>Distribute stock from <code>{{ gpr.gpr_reference }}</code> to instructors</p>
+</div>
+
+<!-- GPR Summary -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="glass-card stat-card blue">
+            <div class="stat-label">Item / GPR Ref</div>
+            <div class="mt-1" style="font-weight: 600;">{{ gpr.item.item_name }} <br><small class="text-accent">{{ gpr.gpr_reference }}</small></div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="glass-card stat-card green">
+            <div class="stat-number" style="color: var(--accent-green);">{{ gpr.item_qty }}</div>
+            <div class="stat-label">Total Purchased</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="glass-card stat-card peach">
+            <div class="stat-number" style="color: var(--accent-peach);">{{ remaining_qty }}</div>
+            <div class="stat-label">Remaining to Allocate</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="glass-card stat-card mauve">
+            <div class="stat-label">Supplier</div>
+            <div class="mt-1" style="font-weight: 600;">{{ gpr.supplier_name }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Allocation Form -->
+    {% if remaining_qty > 0 %}
+    <div class="col-lg-5 mb-4">
+        <div class="glass-card">
+            <h5 class="mb-3"><i class="bi bi-person-plus me-2"></i>Allocate Stock</h5>
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    <label class="form-label">Instructor</label>
+                    {{ form.instructor }}
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Quantity to Allocate</label>
+                    {{ form.opening_bal }}
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label">Instructor CR Reference (Reg / Page / Idx / Sub)</label>
+                    <div class="row g-2">
+                        <div class="col-3">{{ form.register_no }}</div>
+                        <div class="col-3">{{ form.page_no }}</div>
+                        <div class="col-3">{{ form.item_no }}</div>
+                        <div class="col-3">{{ form.sub_entry }}</div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-gradient w-100">
+                    <i class="bi bi-plus-circle me-1"></i> Finalize Allocation
+                </button>
+            </form>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-lg-5 mb-4">
+        <div class="glass-card text-center py-4" style="border-left: 3px solid var(--accent-green);">
+            <i class="bi bi-check-circle" style="font-size: 2.5rem; color: var(--accent-green);"></i>
+            <p class="mt-2 mb-0" style="color: var(--accent-green); font-weight: 600;">
+                All stock has been allocated!
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Allocations Table -->
+    <div class="col-lg-7">
+        <div class="glass-card">
+            <h5 class="mb-3"><i class="bi bi-list-ul me-2"></i>Current Allocations</h5>
+            <div class="table-responsive">
+                <table class="table table-modern mb-0">
+                    <thead>
+                        <tr>
+                            <th>Instructor</th>
+                            <th>CR Reference</th>
+                            <th>Qty</th>
+                            <th>Bal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for alloc in allocations %}
+                        <tr>
+                            <td>{{ alloc.instructor.name }}</td>
+                            <td><code>{{ alloc.cr_reference }}</code></td>
+                            <td><strong>{{ alloc.opening_bal }}</strong></td>
+                            <td>{{ alloc.current_bal }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center py-3" style="color: var(--text-secondary);">
+                                No allocations yet
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<a href="{% url 'inventory:gpr_list' %}" class="btn btn-outline-accent mt-3">
+    <i class="bi bi-arrow-left me-1"></i> Back to GPR Register
+</a>
+{% endblock %}

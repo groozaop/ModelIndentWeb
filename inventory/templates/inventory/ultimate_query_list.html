@@ -1,0 +1,60 @@
+{% extends "inventory/base.html" %}
+
+{% block title %}Ultimate Queries — Inventory IMS{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1><i class="bi bi-layers me-2" style="color: var(--accent-mauve);"></i>Ultimate Queries</h1>
+        <p>Batches of consolidated requirements for procurement</p>
+    </div>
+    <a href="{% url 'inventory:merge_demand' %}" class="btn btn-outline-accent">
+        <i class="bi bi-plus-lg me-1"></i> New Merge
+    </a>
+</div>
+
+<div class="glass-card mt-3">
+    <div class="table-responsive">
+        <table class="table table-modern mb-0">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Query No</th>
+                    <th>FY</th>
+                    <th>Demands Included</th>
+                    <th>Status</th>
+                    <th class="text-end">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for query in queries %}
+                <tr>
+                    <td>{{ query.created_at|date:"d-m-Y" }}</td>
+                    <td><strong>{{ query.query_no }}</strong></td>
+                    <td>{{ query.financial_year }}</td>
+                    <td><span class="badge bg-secondary bg-opacity-25 text-white fw-normal">{{ query.demand_notes.count }} Demands</span></td>
+                    <td>
+                        {% if query.is_purchased %}
+                        <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 px-2">Purchased</span>
+                        {% else %}
+                        <span class="badge bg-warning bg-opacity-25 text-warning border border-warning border-opacity-25 px-2">Pending Purchase</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <a href="{% url 'inventory:ultimate_query_detail' query.pk %}" class="btn btn-sm btn-gradient">
+                            View Snapshot
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-4" style="color: var(--text-secondary);">
+                        No ultimate queries generated yet.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

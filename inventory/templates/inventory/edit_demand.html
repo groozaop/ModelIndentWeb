@@ -1,0 +1,197 @@
+{% extends "inventory/base.html" %}
+
+{% block title %}Edit DN-{{ demand.pk|stringformat:"04d" }} — Inventory IMS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>
+        <i class="bi bi-pencil-square me-2" style="color: var(--accent-peach);"></i>
+        Edit Demand Note DN-{{ demand.pk|stringformat:"04d" }}
+    </h1>
+    <p>Modify items and quantities before submitting</p>
+</div>
+
+<form method="post" id="demand-form">
+    {% csrf_token %}
+
+    <div class="glass-card mb-4">
+        <h5 class="mb-3"><i class="bi bi-file-earmark-text me-2"></i>Demand Details</h5>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Semester Number</label>
+                {{ form.semester_no }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Financial Year</label>
+                {{ form.financial_year }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Remarks (Optional)</label>
+                {{ form.remarks }}
+            </div>
+        </div>
+    </div>
+
+    <div class="glass-card mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0"><i class="bi bi-list-ol me-2"></i>Items</h5>
+            <button type="button" class="btn btn-sm btn-outline-accent" id="add-row-btn">
+                <i class="bi bi-plus-lg me-1"></i> Add Row
+            </button>
+        </div>
+
+        {{ formset.management_form }}
+
+        {% if formset.non_form_errors %}
+        <div class="alert alert-danger" style="font-size: 0.85rem;">
+            {% for error in formset.non_form_errors %}{{ error }}{% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="table-responsive">
+            <table class="table table-modern mb-0" id="items-table">
+                <thead>
+                    <tr>
+                        <th style="width: 5%;">Sr.</th>
+                        <th style="width: 42%;">Item</th>
+                        <th style="width: 12%;">Unit</th>
+                        <th style="width: 12%;">Est. Price</th>
+                        <th style="width: 17%;">Qty Required</th>
+                        <th style="width: 12%;">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="items-tbody">
+                    {% for item_form in formset %}
+                    <tr class="item-row {% if item_form.errors %}table-danger{% endif %}">
+                        <td class="row-number">{{ forloop.counter }}</td>
+                        <td>
+                            {{ item_form.item }}
+                            {{ item_form.id }}
+                            {% if item_form.DELETE %}
+                            <div style="display:none;">{{ item_form.DELETE }}</div>
+                            {% endif %}
+                            {% if item_form.item.errors %}
+                            <div class="text-danger mt-1" style="font-size: 0.78rem;">{{ item_form.item.errors.0 }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="unit-cell" style="color: var(--accent); font-weight: 600;">—</td>
+                        <td class="price-cell" style="color: var(--text-secondary); font-size: 0.85rem;">—</td>
+                        <td>
+                            {{ item_form.quantity_required }}
+                            {% if item_form.quantity_required.errors %}
+                            <div class="text-danger mt-1" style="font-size: 0.78rem;">{{ item_form.quantity_required.errors.0 }}</div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-sm remove-row-btn"
+                                    style="border: 1px solid rgba(243,139,168,0.3); color: var(--accent-red);"
+                                    title="Remove row">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-gradient">
+            <i class="bi bi-save me-1"></i> Save Changes
+        </button>
+        <a href="{% url 'inventory:view_demand' demand.pk %}" class="btn btn-outline-accent">Cancel</a>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tbody = document.getElementById('items-tbody');
+    const totalFormsInput = document.getElementById('id_items-TOTAL_FORMS');
+    const addBtn = document.getElementById('add-row-btn');
+    let itemData = {};
+
+    fetch('{% url "inventory:item_data_json" %}')
+        .then(r => r.json())
+        .then(data => {
+            itemData = data;
+            tbody.querySelectorAll('.item-row').forEach(updateRowInfo);
+        });
+
+    function updateRowInfo(row) {
+        const select = row.querySelector('select.item-select');
+        const unitCell = row.querySelector('.unit-cell');
+        const priceCell = row.querySelector('.price-cell');
+        if (!select || !unitCell) return;
+
+        const code = select.value;
+        if (code && itemData[code]) {
+            unitCell.textContent = itemData[code].unit;
+            priceCell.textContent = '₹' + itemData[code].price.toFixed(2);
+        } else {
+            unitCell.textContent = '—';
+            priceCell.textContent = '—';
+        }
+    }
+
+    tbody.addEventListener('change', function(e) {
+        if (e.target.classList.contains('item-select')) {
+            updateRowInfo(e.target.closest('.item-row'));
+        }
+    });
+
+    addBtn.addEventListener('click', function() {
+        const formCount = parseInt(totalFormsInput.value);
+        const firstRow = tbody.querySelector('.item-row');
+        if (!firstRow) return;
+
+        const newRow = firstRow.cloneNode(true);
+        newRow.classList.remove('table-danger');
+        newRow.querySelectorAll('select, input').forEach(function(el) {
+            const name = el.getAttribute('name');
+            if (name) {
+                const newName = name.replace(/-\d+-/, '-' + formCount + '-');
+                el.setAttribute('name', newName);
+                el.setAttribute('id', 'id_' + newName);
+            }
+            if (el.tagName === 'SELECT') el.selectedIndex = 0;
+            else if (el.type === 'number') el.value = '';
+            else if (el.type === 'hidden') el.value = '';
+            else if (el.type === 'checkbox') el.checked = false;
+        });
+        newRow.querySelectorAll('.text-danger').forEach(e => e.remove());
+        newRow.querySelector('.unit-cell').textContent = '—';
+        newRow.querySelector('.price-cell').textContent = '—';
+        tbody.appendChild(newRow);
+        totalFormsInput.value = formCount + 1;
+        renumberRows();
+    });
+
+    tbody.addEventListener('click', function(e) {
+        const btn = e.target.closest('.remove-row-btn');
+        if (!btn) return;
+        const row = btn.closest('.item-row');
+        const deleteCheckbox = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+        const idInput = row.querySelector('input[type="hidden"][name$="-id"]');
+        if (idInput && idInput.value) {
+            if (deleteCheckbox) deleteCheckbox.checked = true;
+            row.style.display = 'none';
+        } else {
+            row.remove();
+        }
+        renumberRows();
+    });
+
+    function renumberRows() {
+        let num = 1;
+        tbody.querySelectorAll('.item-row').forEach(row => {
+            if (row.style.display !== 'none') {
+                row.querySelector('.row-number').textContent = num++;
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
