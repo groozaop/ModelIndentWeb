@@ -9,6 +9,7 @@ urlpatterns = [
 
     # API
     path('api/items/', views.item_data_json, name='item_data_json'),
+    path('api/search-items/', views.search_items, name='search_items'),
 
     # Registration
     path('register/', views.register_instructor, name='register'),

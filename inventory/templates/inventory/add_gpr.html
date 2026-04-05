@@ -26,10 +26,13 @@
                 </div>
 
                 <div class="row g-3 mb-4">
-                    <div class="col-md-8">
-                        <label class="form-label">Item</label>
-                        {{ form.item }}
-                    </div>
+                    <div class="col-md-6 mb-3 item-select-container">
+                    <label class="form-label" for="id_item"><i class="bi bi-box-seam me-1"></i> Item</label>
+                    {{ form.item }}
+                    {% if form.item.errors %}
+                        <div class="text-danger" style="font-size: 0.8rem;">{{ form.item.errors.0 }}</div>
+                    {% endif %}
+                </div>
                     <div class="col-md-4">
                         <label class="form-label">Quantity Received</label>
                         {{ form.item_qty }}
@@ -85,4 +88,79 @@
         </div>
     </div>
 </div>
+{% block extra_css %}
+<style>
+    /* Premium Select2 Dark Mode Fixes */
+    .select2-container--default .select2-selection--single {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 8px !important;
+        height: 42px !important;
+        color: var(--text-primary) !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: var(--text-primary) !important;
+        line-height: 40px !important;
+        padding-left: 12px !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 40px !important;
+    }
+    
+    /* Dropdown List Styling */
+    .select2-dropdown {
+        background-color: #1e1e2e !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        border-radius: 8px !important;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.5) !important;
+        z-index: 9999 !important;
+    }
+    .select2-results__option {
+        padding: 10px 12px !important;
+        background-color: #1e1e2e !important;
+        color: var(--text-primary) !important;
+    }
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background-color: var(--accent) !important;
+        color: #11111b !important;
+    }
+    
+    /* Search Box inside Dropdown */
+    .select2-search--dropdown {
+        background-color: #1e1e2e !important;
+        padding: 8px !important;
+    }
+    .select2-search--dropdown .select2-search__field {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        color: var(--text-primary) !important;
+    }
+
+    .select2-container { position: relative; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    $('#id_item').select2({
+        placeholder: 'Search for an item...',
+        ajax: {
+            url: '{% url "inventory:search_items" %}',
+            dataType: 'json',
+            delay: 200,
+            data: function (params) {
+                return { q: params.term };
+            },
+            processResults: function (data) {
+                return { results: data.results };
+            },
+            cache: true
+        },
+        minimumInputLength: 2,
+        width: '100%',
+        dropdownParent: $('#id_item').closest('.item-select-container')
+    });
+});
+</script>
 {% endblock %}

@@ -10,8 +10,9 @@ from django.utils import timezone
 from .models import (
     DemandNote, DemandItem, Item, GPR, ConsumableRegister,
     Instructor, Trade, FINANCIAL_YEAR_CHOICES,
-    UltimateQuery, UltimateQueryItem,
+    UltimateQuery, UltimateQueryItem, ItemGroup,
 )
+from django.db.models import Q
 import xlwt
 import io
 import traceback
@@ -329,6 +330,43 @@ def item_data_json(request):
             'group': item.group.name if item.group else '',
         }
     return JsonResponse(data)
+
+
+@login_required
+def search_items(request):
+    """
+    Enhanced server-side search for items.
+    Splits query by spaces and matches all words (AND logic).
+    Supports regex patterns if valid.
+    """
+    query = request.GET.get('q', '').strip()
+    results = []
+    
+    if len(query) >= 2:
+        words = query.split()
+        q_obj = Q()
+        for word in words:
+            q_obj &= (Q(item_name__icontains=word) | Q(item_code__icontains=word))
+            
+        try:
+            # Try applying as regex if the user provides a special pattern
+            items = Item.objects.filter(
+                q_obj | Q(item_name__iregex=query)
+            ).select_related('group')[:25]
+        except Exception:
+            # Fallback to smart word matching
+            items = Item.objects.filter(q_obj).select_related('group')[:25]
+            
+        for item in items:
+            results.append({
+                'id': item.pk,
+                'text': f"{item.item_name} [{item.item_code}]",
+                'unit': item.item_unit,
+                'price': float(item.est_price),
+                'group': item.group.name if item.group else 'No Category'
+            })
+            
+    return JsonResponse({'results': results})
 
 
 # ─── StoreKeeper: Merge Demand (Checkbox Selection) ─────────────────────────

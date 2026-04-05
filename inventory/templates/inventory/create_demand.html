@@ -35,11 +35,19 @@
 
     <!-- Items Table -->
     <div class="glass-card mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-1">
             <h5 class="mb-0"><i class="bi bi-list-ol me-2"></i>Items</h5>
             <button type="button" class="btn btn-sm btn-outline-accent" id="add-row-btn">
-                <i class="bi bi-plus-lg me-1"></i> Add Row
+                <i class="bi bi-plus-lg me-1"></i> Add Blank Row
             </button>
+        </div>
+
+        <div class="mb-4 pt-3 border-top border-secondary-subtle item-select-container">
+            <label class="form-label" style="color: var(--accent);"><i class="bi bi-lightning-fill me-1"></i> Smart Item Search (Add Items Quickly)</label>
+            <select id="quick-search-select" class="form-select"></select>
+            <div class="form-text" style="font-size: 0.75rem; color: var(--text-secondary);">
+                Pro Tip: Type multiple words like "hammer 500" or even a regex pattern to filter 2,500+ items instantly. Hit Enter to add.
+            </div>
         </div>
 
         {{ formset.management_form }}
@@ -66,7 +74,7 @@
                     {% for item_form in formset %}
                     <tr class="item-row {% if item_form.errors %}table-danger{% endif %}">
                         <td class="row-number">{{ forloop.counter }}</td>
-                        <td>
+                        <td class="item-select-container">
                             {{ item_form.item }}
                             {{ item_form.id }}
                             {% if item_form.DELETE %}
@@ -108,102 +116,181 @@
 </form>
 {% endblock %}
 
-{% block extra_js %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const tbody = document.getElementById('items-tbody');
-    const totalFormsInput = document.getElementById('id_items-TOTAL_FORMS');
-    const addBtn = document.getElementById('add-row-btn');
-    let itemData = {};
-
-    // Fetch item data for unit/price lookup
-    fetch('{% url "inventory:item_data_json" %}')
-        .then(r => r.json())
-        .then(data => {
-            itemData = data;
-            // Initialize existing rows
-            tbody.querySelectorAll('.item-row').forEach(updateRowInfo);
-        });
-
-    function updateRowInfo(row) {
-        const select = row.querySelector('select.item-select');
-        const unitCell = row.querySelector('.unit-cell');
-        const priceCell = row.querySelector('.price-cell');
-        if (!select || !unitCell) return;
-
-        const code = select.value;
-        if (code && itemData[code]) {
-            unitCell.textContent = itemData[code].unit;
-            priceCell.textContent = '₹' + itemData[code].price.toFixed(2);
-        } else {
-            unitCell.textContent = '—';
-            priceCell.textContent = '—';
-        }
+{% block extra_css %}
+<style>
+    /* Premium Select2 Dark Mode Fixes */
+    .select2-container--default .select2-selection--single {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 8px !important;
+        height: 42px !important;
+        color: var(--text-primary) !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: var(--text-primary) !important;
+        line-height: 40px !important;
+        padding-left: 12px !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 40px !important;
+    }
+    
+    /* Dropdown List Styling */
+    .select2-dropdown {
+        background-color: #1e1e2e !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        border-radius: 8px !important;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.5) !important;
+        z-index: 9999 !important;
+    }
+    .select2-results__option {
+        padding: 10px 12px !important;
+        background-color: #1e1e2e !important;
+        color: var(--text-primary) !important;
+    }
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background-color: var(--accent) !important;
+        color: #11111b !important;
+    }
+    .select2-container--default .select2-results__option[aria-selected="true"] {
+        background-color: rgba(137, 180, 250, 0.2) !important;
+    }
+    
+    /* Search Box inside Dropdown */
+    .select2-search--dropdown {
+        background-color: #1e1e2e !important;
+        padding: 8px !important;
+    }
+    .select2-search--dropdown .select2-search__field {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        color: var(--text-primary) !important;
+        border-radius: 4px !important;
+        padding: 6px !important;
     }
 
-    // Listen for item dropdown changes
-    tbody.addEventListener('change', function(e) {
-        if (e.target.classList.contains('item-select')) {
-            updateRowInfo(e.target.closest('.item-row'));
-        }
+    /* Fix for "appearing anywhere" - ensures relative positioning context */
+    .item-select-container {
+        position: relative !important;
+    }
+
+    #quick-search-box {
+        margin-bottom: 20px;
+        max-width: 600px;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    const tbody = $('#items-tbody');
+    const totalFormsInput = $('#id_items-TOTAL_FORMS');
+    const addBtn = $('#add-row-btn');
+
+    // Initialize "Smart Search & Add"
+    $('#quick-search-select').select2({
+        placeholder: '🚀 Type multiple words (e.g. hammer 500) and Enter...',
+        ajax: {
+            url: '{% url "inventory:search_items" %}',
+            dataType: 'json',
+            delay: 200,
+            data: function (params) { return { q: params.term }; },
+            processResults: function (data) { return { results: data.results }; },
+            cache: true
+        },
+        minimumInputLength: 2,
+        width: '100%',
+        dropdownParent: $('#quick-search-select').parent()
+    }).on('select2:select', function(e) {
+        const data = e.params.data;
+        addNewRow(data);
+        $(this).val(null).trigger('change');
     });
 
-    // Add new row
-    addBtn.addEventListener('click', function() {
-        const formCount = parseInt(totalFormsInput.value);
-        const firstRow = tbody.querySelector('.item-row');
-        if (!firstRow) return;
+    function initRowSelect(element) {
+        $(element).select2({
+            placeholder: 'Search item...',
+            ajax: {
+                url: '{% url "inventory:search_items" %}',
+                dataType: 'json',
+                delay: 150,
+                data: function (params) { return { q: params.term }; },
+                processResults: function (data) { return { results: data.results }; },
+                cache: true
+            },
+            minimumInputLength: 2,
+            width: '100%',
+            dropdownParent: $(element).closest('.item-select-container')
+        }).on('select2:select', function(e) {
+            const data = e.params.data;
+            const row = $(this).closest('.item-row');
+            row.find('.unit-cell').text(data.unit || '—');
+            row.find('.price-cell').text('₹' + (data.price ? data.price.toFixed(2) : '0.00'));
+        });
+    }
 
-        const newRow = firstRow.cloneNode(true);
-        newRow.classList.remove('table-danger');
+    function addNewRow(initialData = null) {
+        const formCount = parseInt(totalFormsInput.val());
+        const firstRow = $('.item-row').first();
+        if (!firstRow.length) return;
 
-        newRow.querySelectorAll('select, input').forEach(function(el) {
-            const name = el.getAttribute('name');
+        const newRow = firstRow.clone();
+        newRow.removeClass('table-danger').find('.text-danger').remove();
+        newRow.find('.select2-container').remove();
+        newRow.find('.item-select').removeClass('select2-hidden-accessible').removeAttr('data-select2-id').show();
+
+        newRow.find('select, input').each(function() {
+            const name = $(this).attr('name');
             if (name) {
                 const newName = name.replace(/-\d+-/, '-' + formCount + '-');
-                el.setAttribute('name', newName);
-                el.setAttribute('id', 'id_' + newName);
+                $(this).attr('name', newName);
+                $(this).attr('id', 'id_' + newName);
             }
-            if (el.tagName === 'SELECT') el.selectedIndex = 0;
-            else if (el.type === 'number') el.value = '';
-            else if (el.type === 'hidden') el.value = '';
-            else if (el.type === 'checkbox') el.checked = false;
+            if ($(this).is('select')) {
+                $(this).empty().append('<option value="">---------</option>');
+                if (initialData) {
+                    $(this).append(`<option value="${initialData.id}" selected>${initialData.text}</option>`);
+                }
+                $(this).val(initialData ? initialData.id : '').trigger('change');
+            }
+            else if ($(this).is('input[type="number"]')) $(this).val('');
+            else if ($(this).is('input[type="hidden"]')) $(this).val('');
+            else if ($(this).is('input[type="checkbox"]')) $(this).prop('checked', false);
         });
 
-        newRow.querySelectorAll('.text-danger').forEach(e => e.remove());
-        // Reset unit and price cells
-        newRow.querySelector('.unit-cell').textContent = '—';
-        newRow.querySelector('.price-cell').textContent = '—';
+        if (initialData) {
+            newRow.find('.unit-cell').text(initialData.unit || '—');
+            newRow.find('.price-cell').text('₹' + (initialData.price ? initialData.price.toFixed(2) : '0.00'));
+        } else {
+            newRow.find('.unit-cell').text('—');
+            newRow.find('.price-cell').text('—');
+        }
 
-        tbody.appendChild(newRow);
-        totalFormsInput.value = formCount + 1;
+        tbody.append(newRow);
+        totalFormsInput.val(formCount + 1);
+        initRowSelect(newRow.find('.item-select'));
         renumberRows();
+    }
+
+    // Initial load
+    $('.item-select').each(function() {
+        initRowSelect(this);
     });
 
-    // Remove row
-    tbody.addEventListener('click', function(e) {
-        const btn = e.target.closest('.remove-row-btn');
-        if (!btn) return;
+    addBtn.on('click', function() { addNewRow(); });
 
-        const row = btn.closest('.item-row');
-        const deleteCheckbox = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
-        const idInput = row.querySelector('input[type="hidden"][name$="-id"]');
-
-        if (idInput && idInput.value) {
-            if (deleteCheckbox) deleteCheckbox.checked = true;
-            row.style.display = 'none';
-        } else {
-            row.remove();
+    tbody.on('click', '.remove-row-btn', function() {
+        if ($('.item-row').length > 1) {
+            $(this).closest('.item-row').remove();
+            renumberRows();
+            totalFormsInput.val($('.item-row').length);
         }
-        renumberRows();
     });
 
     function renumberRows() {
-        let num = 1;
-        tbody.querySelectorAll('.item-row').forEach(row => {
-            if (row.style.display !== 'none') {
-                row.querySelector('.row-number').textContent = num++;
-            }
+        $('.item-row').each(function(idx) {
+            $(this).find('.row-number').text(idx + 1);
         });
     }
 });
