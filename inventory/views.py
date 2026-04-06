@@ -1,7 +1,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import Group, User
-from django.contrib.auth import login
+from django.contrib.auth import login, update_session_auth_hash
+from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib import messages
 from django.db.models import Sum
 from django.http import JsonResponse
@@ -19,7 +20,7 @@ import traceback
 from django.http import FileResponse, HttpResponse
 from .forms import (
     DemandNoteForm, DemandItemFormSet,
-    InstructorRegistrationForm, EditDemandNoteForm,
+    EditDemandNoteForm, UserUpdateForm,
     GPRForm, AllocateToCRForm,
 )
 
@@ -38,42 +39,43 @@ def is_instructor_or_super(user):
 def is_storekeeper_or_super(user):
     return user.is_superuser or is_storekeeper(user)
 
+# ─── User Profile & Password ────────────────────────────────────────────────
 
-# ─── Registration ────────────────────────────────────────────────────────────
-
-def register_instructor(request):
-    if request.user.is_authenticated:
-        return redirect('inventory:dashboard')
-
+@login_required
+def profile(request):
+    """View for users to update their profile details."""
     if request.method == 'POST':
-        form = InstructorRegistrationForm(request.POST)
+        form = UserUpdateForm(request.POST, instance=request.user)
         if form.is_valid():
-            user = User.objects.create_user(
-                username=form.cleaned_data['username'],
-                email=form.cleaned_data['email'],
-                password=form.cleaned_data['password'],
-            )
-            name_parts = form.cleaned_data['full_name'].split(' ', 1)
-            user.first_name = name_parts[0]
-            user.last_name = name_parts[1] if len(name_parts) > 1 else ''
-            user.save()
-
-            instructors_group, _ = Group.objects.get_or_create(name='Instructors')
-            user.groups.add(instructors_group)
-
-            Instructor.objects.create(
-                name=form.cleaned_data['full_name'],
-                trade=form.cleaned_data['trade'],
-                user=user,
-            )
-
-            login(request, user)
-            messages.success(request, f'Welcome, {user.first_name}! Your account has been created.')
-            return redirect('inventory:dashboard')
+            form.save()
+            messages.success(request, 'Your profile has been updated successfully!')
+            return redirect('inventory:profile')
     else:
-        form = InstructorRegistrationForm()
+        form = UserUpdateForm(instance=request.user)
+    
+    return render(request, 'inventory/profile.html', {
+        'form': form
+    })
 
-    return render(request, 'registration/register.html', {'form': form})
+@login_required
+def change_password(request):
+    """View to allow users to change their password."""
+    if request.method == 'POST':
+        form = PasswordChangeForm(user=request.user, data=request.POST)
+        if form.is_valid():
+            user = form.save()
+            # Keep the user logged in after password change
+            update_session_auth_hash(request, user)
+            messages.success(request, 'Your password was successfully updated!')
+            return redirect('inventory:profile')
+        else:
+            messages.error(request, 'Please correct the error below.')
+    else:
+        form = PasswordChangeForm(user=request.user)
+    
+    return render(request, 'inventory/change_password.html', {
+        'form': form
+    })
 
 
 # ─── Dashboard ───────────────────────────────────────────────────────────────

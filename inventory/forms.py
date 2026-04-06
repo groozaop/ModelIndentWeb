@@ -9,67 +9,27 @@ from .models import (
 
 # ─── Instructor Registration ────────────────────────────────────────────────
 
-class InstructorRegistrationForm(forms.Form):
-    """Registration form for new Instructors (self sign-up)."""
-    username = forms.CharField(
-        max_length=150,
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'Choose a username',
-            'id': 'id_username',
-        })
-    )
-    full_name = forms.CharField(
-        max_length=200,
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'Your full name',
-            'id': 'id_full_name',
-        })
-    )
-    email = forms.EmailField(
-        widget=forms.EmailInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'you@example.com',
-            'id': 'id_email',
-        })
-    )
-    trade = forms.ModelChoiceField(
-        queryset=Trade.objects.all(),
-        widget=forms.Select(attrs={
-            'class': 'form-select',
-            'id': 'id_trade',
-        }),
-        help_text='Select your trade/department'
-    )
-    password = forms.CharField(
-        widget=forms.PasswordInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'Create a password',
-            'id': 'id_password',
-        })
-    )
-    confirm_password = forms.CharField(
-        widget=forms.PasswordInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'Confirm your password',
-            'id': 'id_confirm_password',
-        })
-    )
+# ─── User Profile ───────────────────────────────────────────────────────────
 
-    def clean_username(self):
-        username = self.cleaned_data['username']
-        if User.objects.filter(username=username).exists():
-            raise forms.ValidationError('This username is already taken.')
-        return username
-
-    def clean(self):
-        cleaned_data = super().clean()
-        password = cleaned_data.get('password')
-        confirm = cleaned_data.get('confirm_password')
-        if password and confirm and password != confirm:
-            raise forms.ValidationError('Passwords do not match.')
-        return cleaned_data
+class UserUpdateForm(forms.ModelForm):
+    """Form for users to update their profile information."""
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'email']
+        widgets = {
+            'first_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'id': 'id_first_name',
+            }),
+            'last_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'id': 'id_last_name',
+            }),
+            'email': forms.EmailInput(attrs={
+                'class': 'form-control',
+                'id': 'id_email',
+            }),
+        }
 
 
 # ─── Demand Note (Header) ───────────────────────────────────────────────────

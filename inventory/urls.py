@@ -11,8 +11,9 @@ urlpatterns = [
     path('api/items/', views.item_data_json, name='item_data_json'),
     path('api/search-items/', views.search_items, name='search_items'),
 
-    # Registration
-    path('register/', views.register_instructor, name='register'),
+    # User Profile
+    path('profile/', views.profile, name='profile'),
+    path('profile/change-password/', views.change_password, name='change_password'),
 
     # Instructor: Demand Note CRUD
     path('demand/create/', views.create_demand, name='create_demand'),

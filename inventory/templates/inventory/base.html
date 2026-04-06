@@ -50,6 +50,7 @@
             font-size: 1.1rem;
             background: var(--primary-gradient);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
             letter-spacing: -0.02em;
         }
@@ -421,6 +422,18 @@
 
         <div class="sidebar-section">Account</div>
         <ul class="nav flex-column mb-3">
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}" 
+                   href="{% url 'inventory:profile' %}">
+                    <i class="bi bi-person-circle"></i> Profile
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'change_password' %}active{% endif %}" 
+                   href="{% url 'inventory:change_password' %}">
+                    <i class="bi bi-shield-lock"></i> Change Password
+                </a>
+            </li>
             {% if user.is_superuser %}
             <li class="nav-item">
                 <a class="nav-link" href="{% url 'admin:index' %}">
